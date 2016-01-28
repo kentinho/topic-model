@@ -1,33 +1,73 @@
-# 
 library("RMeCab")
 library("lda")
+library("ggplot2")
+library("reshape2")
 setwd("C:/Users/kento/Desktop/トピックモデル")
 
 #
-## テキストから特定の品詞のみ抽出。(名詞と形容詞。助詞を入れると、それがトピックと認識されるのを防ぐため。)
+## テキストから名詞と形容詞のみ抽出（数字を抜くツールがあると便利!）
 #
-Text1 <- RMeCabText("ChineseGovTakesMeasuresForStockMarket.txt")
+Chinese <- read.csv("ChineseGovTakesMeasuresForStockMarket.txt")
+American <- read.csv("HowInflueceRaiseInterestInAmericaForGlobalMaerket.txt")
+JP <- read.csv("JP.txt")
+JP2 <- read.csv("GPIF.txt")
+CHI <- read.csv("CHI.txt")
 
-ChineseGov <- NULL
+
+Text1 <- RMeCabText("ChineseGovTakesMeasuresForStockMarket.txt")
 for (i in 1:length(Text1)) {
         if (Text1[[i]][2] %in% c("名詞", "形容詞")) {
-                ChineseGov <- c(ChineseGov, paste(Text1[[i]][1], sep = "", collapse = " "))
+                Chinese <- c(Chinese, paste(Text1[[i]][1], sep = "", collapse = " "))
         }
 }
-ChineseGov.lex <- lexicalize(ChineseGov)
+# ChineseGov.lex <- lexicalize(ChineseGov)
 #HowInflueceRaiseInterestInAmericaForGlobalMaerket.txt
 
 Text2 <- RMeCabText("HowInflueceRaiseInterestInAmericaForGlobalMaerket.txt")
-
-American <- NULL
 for (i in 1:length(Text2)) {
         if (Text2[[i]][2] %in% c("名詞", "形容詞")) {
                 American<- c(American, paste(Text2[[i]][1], sep = "", collapse = " "))
         }
 }
-American.lex <- lexicalize(American)
 
-k <- 10
-ABC <- lda.collapsed.gibbs.sampler(American.lex$documents, k,American.lex$vocab,num.iteration = 25, alpha = 0.1, eta=0.1, compute.log.likelihood = TRUE)
+
+Text4 <- RMeCabText("GPIF.txt")
+for (i in 1:length(Text4)) {
+        if (Text4[[i]][2] %in% c("名詞", "形容詞")) {
+                JP2<- c(JP2, paste(Text4[[i]][1], sep = "", collapse = " "))
+        }
+}
+
+Text3 <- RMeCabText("JP.txt")
+for (i in 1:length(Text3)) {
+        if (Text3[[i]][2] %in% c("名詞", "形容詞")) {
+                JP<- c(JP, paste(Text3[[i]][1], sep = "", collapse = " "))
+                
+        }
+}
+
+Text5 <- RMeCabText("CHI.txt")
+for (i in 1:length(Text5)) {
+        if (Text5[[i]][2] %in% c("名詞", "形容詞")) {
+                CHI<- c(CHI, paste(Text5[[i]][1], sep = "", collapse = " "))
+        }
+}
+
+lex <- lexicalize(c(American,Chinese,JP,JP2,CHI), lower = TRUE)
+
+
+# ５つの文章のうち、トピックの総数ががいくつか。
+k <- 3
+ABC <- lda.collapsed.gibbs.sampler(lex$documents, k, lex$vocab,num.iteration = 25, alpha = 0.1, eta=0.1, compute.log.likelihood = TRUE)
 
 top.words <- top.topic.words(ABC$topics, 3, by.score=TRUE)
+
+#トピックを割り当てる記事数
+N <- 5
+topic.proportions <- t(ABC$document_sums)/colSums(ABC$document_sums)
+topic.proportions <- topic.proportions[1:N, ]
+topic.proportions[is.na(topic.proportions)] <- 1/k
+
+colnames(topic.proportions) <- apply(top.words, 2, paste, collapse=" ")
+par(mar = c(1, 10, 2, 2))
+barplot(topic.proportions, beside=TRUE, horiz=TRUE, las=1, xlab="proportion")
